@@ -1,0 +1,41 @@
+const { ServiceBusClient } = require("@azure/service-bus");
+const EventEmitter = require("events");
+const eventEmitter = new EventEmitter();
+const config = require("./config");
+const { queueName } = config.azure.queueService;
+const connectionString = config.azure.queueService.connectionString;
+const { encodeVideo } = require("../services/fileprocess.service");
+
+async function connectToQueue() {
+  const sbClient = new ServiceBusClient(connectionString);
+
+  const receiver = sbClient.createReceiver(queueName);
+
+  // function to handle messages
+  const myMessageHandler = async (messageReceived) => {
+    console.log(`Received message: ${messageReceived.body}`);
+    try {
+      const { url, courseId, assetId } = JSON.parse(messageReceived.body);
+      await encodeVideo(url, courseId, assetId);
+    } catch (error) {
+      console.error("Error:", error);
+      throw error;
+    }
+  };
+
+  // function to handle any errors
+  const myErrorHandler = async (error) => {
+    console.log(error);
+  };
+
+  // subscribe and specify the message and error handlers
+  receiver.subscribe({
+    processMessage: myMessageHandler,
+    processError: myErrorHandler,
+  });
+}
+
+module.exports = {
+  eventEmitter,
+  connectToQueue,
+};
