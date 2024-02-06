@@ -1,10 +1,12 @@
 const { connectToQueue } = require("./config/queueSubscriber");
+const { connectToDatabase } = require("./config/mongoose");
 
-const startWorker = () => {
+const startWorker = async () => {
   try {
     console.log("Worker started...");
-    connectToQueue();
-    console.log("Worker connected to queue...");
+    await connectToQueue();
+    await connectToDatabase();
+    console.log("Worker connected to queue and database...");
   } catch (error) {
     console.log("Error:", error);
   }

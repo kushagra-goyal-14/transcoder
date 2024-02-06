@@ -182,6 +182,8 @@ const {
   BlobSASPermissions,
 } = require("@azure/storage-blob");
 
+const { changeAssetStatus, updateDuration } = require("../config/mongoose");
+
 const {
   account,
   accountKey,
@@ -280,11 +282,25 @@ async function uploadBlobs(files, folder = "uploads", isPrivate = false) {
 
 async function encodeVideo(inputStream, courseId, assetId) {
   try {
-    const resolutions = ["scale=1280:720", "scale=854:480", "scale=1920:1080"];
+    const resolutions = ["scale=854:480", "scale=1280:720", "scale=1920:1080"];
+    const url = await getBlobURL(inputStream, true);
+    const duration = await new Promise((resolve, reject) => {
+      ffmpeg.ffprobe(url, (err, metadata) => {
+        if (err) {
+          reject(err);
+        }
+        resolve(metadata.format.duration);
+      });
+    });
+    console.log("duration", duration);
+
+    await updateDuration(courseId, assetId, duration);
+
+    await changeAssetStatus(courseId, assetId, "processing");
 
     for (const resolution of resolutions) {
       const fileName = `video-${resolution.split(":")[1]}.mp4`;
-      const command = ffmpeg(inputStream)
+      const command = ffmpeg(url)
         .videoFilters(resolution)
         .videoCodec("libx264")
         .audioCodec("aac")
@@ -313,10 +329,12 @@ async function encodeVideo(inputStream, courseId, assetId) {
       console.log("ans", ans);
     }
 
+    await changeAssetStatus(courseId, assetId, "processed");
     console.log(
       "All resolutions and formats encoded and saved to azure Blob Storage successfully."
     );
   } catch (error) {
+    await changeAssetStatus(courseId, assetId, "failed");
     console.error("Error:", error);
   }
 }

@@ -7,7 +7,11 @@ const connectionString = config.azure.queueService.connectionString;
 const { encodeVideo } = require("../services/fileprocess.service");
 
 async function connectToQueue() {
-  const sbClient = new ServiceBusClient(connectionString);
+  const sbClient = new ServiceBusClient(connectionString, {
+    retryOptions: {
+      maxAutoRenewDurationInMs: 15000,
+    },
+  });
 
   const receiver = sbClient.createReceiver(queueName);
 
@@ -15,8 +19,9 @@ async function connectToQueue() {
   const myMessageHandler = async (messageReceived) => {
     console.log(`Received message: ${messageReceived.body}`);
     try {
-      const { url, courseId, assetId } = JSON.parse(messageReceived.body);
-      await encodeVideo(url, courseId, assetId);
+      const { key, courseId, assetId } = JSON.parse(messageReceived.body);
+      await encodeVideo(key, courseId, assetId);
+      await receiver.completeMessage(messageReceived);
     } catch (error) {
       console.error("Error:", error);
       throw error;

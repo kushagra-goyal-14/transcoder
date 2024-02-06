@@ -10,6 +10,7 @@ const envVarsSchema = Joi.object()
     NODE_ENV: Joi.string()
       .valid("test", "development", "production")
       .required(),
+    MONGODB_URL: Joi.string().required(),
   })
   .unknown();
 
@@ -24,7 +25,7 @@ if (error) {
 }
 
 module.exports = {
-  //   env: envVars.NODE_ENV,
+  env: envVars.NODE_ENV,
   //   port: envVars.PORT,
   azure: {
     blobStorage: {
@@ -37,6 +38,14 @@ module.exports = {
     queueService: {
       queueName: envVars.AZURE_QUEUE_NAME,
       connectionString: envVars.AZURE_QUEUE_CONNECTION_STRING,
+    },
+  },
+  mongoose: {
+    // exception added for TDD purpose
+    url: envVars.MONGODB_URL + (envVars.NODE_ENV === "test" ? "-test" : ""),
+    options: {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
     },
   },
 };
